@@ -1,0 +1,15 @@
+w = linspace(4,13,10)*1e-6; #width of photodetector
+T = matrix(50,10); #I vs Vanode
+
+# Load the results:
+for(i=1:10) {
+    filename = "Responsivity_"+num2str(w(i)/2*1e6)+"um_wide.ldev";
+    load(filename);
+    # Get the results:
+    # Calculating the dark currents for different lengths
+    a = getresult("CHARGE", "Cathode");
+    T(:, i) = a.I;
+    x = a.V_Anode;
+}
+out = plot(x,T,"V_Anode","Responsivity(mA/W)","Responsivity for Different Widths");
+legend("2um","2.5um","3um","3.5um","4um","4.5um","5um","5.5um","6um","6.5um");

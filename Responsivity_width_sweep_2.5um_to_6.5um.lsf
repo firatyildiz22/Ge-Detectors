@@ -1,0 +1,358 @@
+clear;
+w = linspace(4,13,10)*1e-6; #width of photodetector
+T = matrix(50,10); #I vs Vanode
+
+for(i=1:10){
+    
+    if (!layoutmode) {
+        
+        switchtolayout;
+    }
+    ###################### IMPORTANT #####################
+    # Before running this script, materials must be manually added to the Model
+    # Al, Si, Ge, Oxide with electrical and optical properties
+    #
+    #
+    
+    ## Delete any existing geometry (if present) for redrawing
+    
+    selectpartial("geometry::");
+    delete;
+    
+    ## Delete any existing charge monitor (if present)
+    select("CHARGE");
+    delete;
+    ############################
+    #   LOAD PARAMETERS        #
+    ############################
+    
+    ## Load Adjustable Parameters for Lumerical Photodetector Simulation
+    ##
+    ##
+    ## All units of length are in meters (m)
+    
+    ## Adjustable Parameters ##
+    l = 50e-6;			# Photodetector Length
+    #w = 6e-6;			# Total Width of Photodetector
+    
+    w_rib = w(i)/2;			# Width of Si rib waveguide (waveguide under germanium)
+    w_trench = w(i)*0.7;		# Width of Trench
+    
+    pp_offset = 0.0e-6;		# PP (distance from center to PP start point)
+    ppp_offset = 0.5e-6;		# PPP (distance from center to PPP start point)
+    
+    w_ge = w_rib;			# Germanium Width (usually = w_rib)
+    w_n = w_rib;			# Ge Doping Width (usually = w_rib)
+    
+    l_in = 1e-6;			# Input Waveguide Length
+    
+    ## Standard Parameters
+    th_si = 220e-9;			# Silicon Thickness
+    th_trench = 110e-9;		# Trench Thickness (usually ~1/2 silicon thickness)
+    
+    th_ge = 400e-9;			# Germanium Thickness
+    th_al_ge = 0.5e-6;		# Germanium Contact Thickness
+    th_n_ge = 50e-9;		# Germanium Doping Depth
+    
+    w_contact = 0.5e-6;		# Width of metal contact
+    th_contact = 0.5e-6;
+    contact_offset = 0.1e-6;	# Si contact offset from detector edge
+    
+    
+    #### Doping parameters
+    n = 1e18*1e6; 			# factor of 1e6 converts from cm-3 to m-3
+    nn = 1e19*1e6;
+    nnn = 1e20*1e6;
+    
+    p = 1e18*1e6;
+    pp = 1e19*1e6;
+    ppp = 1e20*1e6;
+    
+    #### Laser Source Parameters (for FDTD absorption simulation)
+    x0_mode = -l/2-0.2e-6; 	# x location of mode source
+    zmin_mode = -0.5e-6;
+    zmax_mode = 1e-6;
+    yspan_mode = 0.9*w(i);
+    
+    ############################
+    #   GEOMETRY               #
+    ############################
+    
+    #### Draw Silicon Structures #####
+    
+    addstructuregroup;
+    set("name","si_elements");
+    set("use relative coordinates",0); # Use absolute coordinates so FDTD and Device have the same geometry
+    
+    # Draw Silicon Base
+    addrect;
+    set("name","si_base");
+    set("use relative coordinates",0);
+    set("x span", l);
+    set("y span", w(i));
+    set("z min",0);
+    set("z max",th_trench);
+    addtogroup("::model::geometry::si_elements");
+    
+    # Draw Silicon Rib
+    addrect;
+    set("name","si_rib_waveguide");
+    set("use relative coordinates",0);
+    set("x span",l);
+    set("y span",w_rib);
+    set("z min",th_trench);
+    set("z max",th_si);
+    addtogroup("::model::geometry::si_elements");
+    
+    # Draw Silicon Ridges for Anodes
+    addrect;
+    set("name","si_ridge_anode_1");
+    set("use relative coordinates",0);
+    set("x span",l);
+    set("y min",w_trench/2);
+    set("y max",w(i)/2);
+    set("z min",th_si-th_trench);
+    set("z max",th_si);
+    addtogroup("::model::geometry::si_elements");
+    
+    addrect;
+    set("name","si_ridge_anode_2");
+    set("use relative coordinates",0);
+    set("x span",l);
+    set("y max",-w_trench/2);
+    set("y min",-w(i)/2);
+    set("z min",th_si-th_trench);
+    set("z max",th_si);
+    addtogroup("::model::geometry::si_elements");
+    
+    # Draw Silicon Input Waveguide
+    addrect;
+    set("name","si_input_waveguide");
+    set("use relative coordinates",0);
+    set("x min",-l/2-l_in);
+    set("x max",-l/2);
+    set("z min",0);
+    set("z max",th_si);
+    set("y span", w_rib);
+    addtogroup("::model::geometry::si_elements");
+    
+    #### Draw Germanium ####
+    addrect;
+    set("name","germanium");
+    set("use relative coordinates",0);
+    set("x span",l);
+    set("y span",w_ge);
+    set("z min",th_si);
+    set("z max",th_si+th_ge);
+    
+    
+    #### Draw Cathode and Anode ####
+    addstructuregroup;
+    set("name","anode_contacts");
+    set("use relative coordinates",0);
+    
+    addrect;
+    set("name","anode_1");
+    set("x span",l);
+    set("y span",w_contact);
+    set("y",(w(i)/2+w_trench/2)/2);
+    set("z min",th_si);
+    set("z max",th_si+th_contact);
+    addtogroup("::model::geometry::anode_contacts");
+    
+    addrect;
+    set("name","anode_2");
+    set("x span",l);
+    set("y span",w_contact);
+    set("y",-(w(i)/2+w_trench/2)/2);
+    set("z min",th_si);
+    set("z max",th_si+th_contact);
+    addtogroup("::model::geometry::anode_contacts");
+    
+    addrect;
+    set("name","cathode_contact");
+    set("x span",l);
+    set("y span",w_contact);
+    set("z min",th_si+th_ge);
+    set("z max",th_si+th_ge+th_contact);
+    
+    
+    #### Draw Oxide Box
+    # Oxide
+    addrect;
+    set("use relative coordinates",0);
+    set("name","oxide");
+    set("x span",1.5*l);
+    set("y span",1.5*w(i));
+    set("z span",10e-6);
+    #set("mesh order", 5); ## Only works in Device
+    set("alpha",0.25); # For viewer, does not affect simulation
+    
+    ## Attach Materials
+    selectpartial("si_elements::"); # Selects all members of the structure group (needs ::)
+    set("material","Si");
+    
+    select("germanium");
+    set("material","Ge");
+    
+    selectpartial("anode_contacts::");
+    set("material","Al");
+    
+    select("cathode_contact");
+    set("material","Al");
+    
+    # Oxide
+    select("oxide");
+    set("material","Oxide");
+    set("mesh order",5); # Lower order than elementd enclosed
+    
+    # Setup simulation region
+    select("simulation region");
+    set("dimension","2D X-Normal");
+    set("y span",w(i));
+    set("z min",-0.2e-6);
+    set("z max",th_si+th_ge+th_contact); # top of cathode
+    
+    #Add Charge Solver
+    addchargesolver;
+    set("name","CHARGE");
+    set("norm length",l);
+    
+    # Add Charge Monitor
+    addchargemonitor;
+    set("monitor type","2D x-normal");
+    set("save data",1);
+    set("filename","results.mat");
+    set("y span",w);
+    set("z min",-0.2e-6);
+    set("z max",th_si+th_ge+th_contact); # top of cathode
+    
+    # Setup Electrical Contacts
+    addelectricalcontact;
+    set("name","Anode");
+    set("surface type","solid");
+    set("solid","anode_contacts");
+    #set("voltage",-2);
+    set("sweep type","value");
+    V = linspace(0,-2,50);
+    set("value table",V);
+    
+    addelectricalcontact;
+    set("name","Cathode");
+    set("surface type","solid");
+    set("solid","cathode_contact");
+    set("voltage",0);
+    
+    # Add Doping Regions
+    adddope;
+    set("name","n_ge_doping");
+    set("dopant type","n");
+    set("concentration",nn); # nn value set by parameters script
+    
+    select("CHARGE::n_ge_doping");
+    set("y span",w_n);
+    set("z min",th_si+th_ge-th_n_ge);
+    set("z max",th_si+th_ge);
+    
+    # P doping covers the entire silicon region
+    adddope;
+    set("name","p");
+    set("dopant type","p");
+    set("concentration",p);
+    set("y span",w(i));
+    set("z min",-1e-6); # Make doping go below silicon for more accurate simulation
+    set("z max",th_si);
+    
+    adddope;
+    set("name","pp_yplus");
+    set("dopant type","p");
+    set("concentration",pp);
+    set("y min",pp_offset);
+    set("y max",w(i)/2);
+    set("z min",-1e-6); # Make doping go below silicon for more accurate simulation
+    set("z max",th_si);
+    
+    adddope;
+    set("name","pp_yminus");
+    set("dopant type","p");
+    set("concentration",pp);
+    set("y max",-pp_offset);
+    set("y min",-w(i)/2);
+    set("z min",-1e-6); # Make doping go below silicon for more accurate simulation
+    set("z max",th_si);
+    
+    adddope;
+    set("name","ppp_yplus");
+    set("dopant type","p");
+    set("concentration",ppp);
+    set("y min",ppp_offset);
+    set("y max",w(i)/2);
+    set("z min",-1e-6); # Make doping go below silicon for more accurate simulation
+    set("z max",th_si);
+    
+    adddope;
+    set("name","ppp_yminus");
+    set("dopant type","p");
+    set("concentration",ppp);
+    set("y max",-ppp_offset);
+    set("y min",-w(i)/2);
+    set("z min",-1e-6); # Make doping go below silicon for more accurate simulation
+    set("z max",th_si);
+    
+    # Add Surface Recombination
+    
+    addsurfacerecombinationbc;
+    set("name","al_si");
+    set("surface type","material:material");
+    set("material 1","Al");
+    set("material 2","Si");
+    set("electron velocity",1e7*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("hole velocity",1e7*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("apply to majority carriers",0); # Set to 1 for semiconductor:oxide or semiconductor:semiconductor (per lumerical api)
+    
+    addsurfacerecombinationbc;
+    set("name","al_ge");
+    set("surface type","material:material");
+    set("material 1","Al");
+    set("material 2","Ge");
+    set("electron velocity",1e7*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("hole velocity",1e7*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("apply to majority carriers",0); # Set to 1 for semiconductor:oxide or semiconductor:semiconductor (per lumerical api)
+    
+    addsurfacerecombinationbc;
+    set("name","si_ge");
+    set("surface type","material:material");
+    set("material 1","Si");
+    set("material 2","Ge");
+    set("electron velocity",5e4*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("hole velocity",5e4*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("apply to majority carriers",1); # Set to 1 for semiconductor:oxide or semiconductor:semiconductor (per lumerical api)
+    
+    addsurfacerecombinationbc;
+    set("name","ge_oxide");
+    set("surface type","material:material");
+    set("material 1","Ge");
+    set("material 2","Oxide");
+    set("electron velocity",1.6e5*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("hole velocity",1.6e5*1e-2); # 1e-2 converts from cm/sec to m/sec
+    set("apply to majority carriers",1); # Set to 1 for semiconductor:oxide or semiconductor:semiconductor (per lumerical api)
+        
+    
+    # Add Optical Generation
+
+    matlabload("CW_generation_"+num2str(w(i)/2*1e6)+"um_wide.mat"); # read the data
+    
+    Gen = rectilineardataset(x,y,z); # create the dataset
+    Gen.addattribute("G",G);
+    
+    addimportgen; # create the import generation object
+    
+    importdataset(Gen); # attach the data to the import generation object
+    
+    set("selected attribute","G"); # select the data in the dataset created by the object
+    set("scale factor",0.001); # 1mW power
+    
+    filename = "Responsivity_"+num2str(w(i)/2*1e6)+"um_wide.fsp";
+    save(filename);
+        
+}

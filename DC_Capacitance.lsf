@@ -1,0 +1,53 @@
+#  This script calculates the DC junction capacitance 
+#  
+
+# Set up the bias
+
+vmin = 0; vmax = -2; N = 10;
+
+dv = 0.025;
+vdv = matrix(2*N,1);
+vdv(1:2:(2*N)) = linspace(vmin,vmax,N);
+vdv(2:2:(2*N)) = vdv(1:2:(2*N)) + sign(vmax)*dv;
+
+switchtolayout;
+
+# set contact bias
+select('CHARGE::boundary conditions::Anode');
+set('bc mode','steady state');
+set('sweep type','value');
+set('value table',vdv);
+
+
+# don't save this result to file
+setnamed('CHARGE::monitor','save data',0);
+
+run('CHARGE');
+
+# Calculate capacitance
+
+total_charge = getresult('CHARGE::monitor','total_charge');
+Qn = e*pinch(total_charge.n);
+Qp = e*pinch(total_charge.p);
+
+Cn = abs(Qn(2:2:(2*N))-Qn(1:2:(2*N)))/dv;
+Cp = abs(Qp(2:2:(2*N))-Qp(1:2:(2*N)))/dv;
+V = vdv(1:2:(2*N));
+C_static = 0.5*(Cn+Cp)*1e15*1e-6;  # Convert to femtoFarad/micron  [fF/um]
+
+
+total_charge_Ge = getresult('CHARGE::monitor_Ge','total_charge');
+Qn_Ge = e*pinch(total_charge_Ge.n);
+Qp_Ge = e*pinch(total_charge_Ge.p);
+
+Cn_Ge = abs(Qn_Ge(2:2:(2*N))-Qn_Ge(1:2:(2*N)))/dv;
+Cp_Ge = abs(Qp_Ge(2:2:(2*N))-Qp_Ge(1:2:(2*N)))/dv;
+V = vdv(1:2:(2*N));
+C_static_Ge = 0.5*(Cn_Ge+Cp_Ge)*1e15*1e-6;  # fF/um
+
+# Plot result
+
+plotxy(V,C_static,V,C_static_Ge,"Voltage (V)","Capacitance (fF/um)");
+legend('Simulation - Total','Simulation - Ge');
+
+#matlabsave('LateralPN_1E17Doping_DC_Capacitance',C_static);

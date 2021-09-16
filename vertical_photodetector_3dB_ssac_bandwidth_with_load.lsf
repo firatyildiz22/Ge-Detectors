@@ -1,0 +1,35 @@
+#basefilename = "vertical_photodetector_CHARGE.ldev";
+
+Iss=getdata("CHARGE", "ac_Cathode.dI");
+Vdc=getdata("CHARGE", "ac_Cathode.V_Anode");
+Iss=transpose(pinch(Iss));
+f=getdata("CHARGE", "ac_Cathode.f");
+N= length(f);
+three_dB=f>0;
+three_dB=three_dB*0.001;
+plot(1e-9*f,log10(three_dB));
+holdon;
+leg = cell(2);
+leg{1} = "3 dB threshold";
+fInterp = f(1):1./1e-8:f(length(f)); #0.1GHz grid
+bias = zeros(1);
+f3dB = zeros(1);
+counter = 1;
+#for(i=3;i<=size(Iss,1);i=i+1){#just last DC point
+    IssInterp = interp(Iss(1,:),f,fInterp);
+    bias(counter) = Vdc(1);
+    f3dB(counter) = 1e-9*fInterp(find(20*log10(abs(IssInterp)/max(abs(IssInterp))),-3));
+    freq = f*1e-9;
+    norm_resp = 20*log10(abs(Iss(1,:))/max(abs(Iss(1,:))));
+    #savedata(basefilename+"_norm_resp_vs_freq_"+num2str(counter)+".ldf",freq,norm_resp);
+    plot(1e-9*f,20*log10(abs(Iss(1,:))/abs(Iss(1,1))));
+    leg{counter+1} = num2str(Vdc(1))+"V";
+    counter = counter + 1;
+#}
+setplot("x label","Frequency (GHz)");
+setplot("y label","Normalized response (dB)");
+setplot("log10x",true);
+legend(leg);
+
+bandwidth = f3dB;
+#savedata(basefilename+"_bandwidth_vs_bias.ldf",bias,bandwidth);

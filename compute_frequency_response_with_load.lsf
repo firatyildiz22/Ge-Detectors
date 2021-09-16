@@ -1,0 +1,47 @@
+# Compute the frequency response and
+# find the 3db bandwidth of the photodetector
+#
+# This script is adapted from Lumerical's
+# Vertical Photodetector Tutorial 
+#(vpd_3db_bandwidth.lsf)
+#
+# see https://apps.lumerical.com/pic_photodetectors_vertical_photodetector.html
+
+
+# Get the current 
+I=2*getdata("CHARGE", "Cathode.Vc"); # current vector
+t=getdata("CHARGE", "Cathode.t"); # time vector
+N = length(I);
+
+# Find the derivative
+th = t(2:(N-1)); 
+Nh = N-2;
+
+dI = I(3:N) - I(1:Nh); 
+dt = t(3:N) - t(1:Nh);
+dIdt = dI/dt;
+
+# Interpolate the impulse response and plot the step
+# and impulse response
+t_interp = th(1):0.1e-12:th(Nh);  #uniform time grid
+dIdt_interp = interp(dIdt, th,t_interp);
+plotxy(t_interp*1e12,dIdt_interp/max(dIdt_interp),t*1e12,I/max(I),"time (ps)","Normalized amplitude (a.u) ");
+legend("impulse response","step response");
+setplot("x max",100);
+setplot("y min",0);
+setplot("y max",1.1);
+
+# Take the Fourier Transform (fft) of the impulse 
+# response to find the frequency response
+H = fft(dIdt_interp,2,1);
+w = fftw(t_interp - t_interp(1),2,1);
+Nw = length(w);
+three_dB=w>0;
+three_dB=three_dB*0.001;
+plot(1e-9*w(2:Nw)/2/pi,20*log10(abs(H(2:Nw))/max(abs(H))) , log10(three_dB(2:Nw)),"Frequency (GHz)", " Normalized response (dB)","","log10x");
+
+legend("","");
+setplot("y max",1); 
+setplot("y min",-70);
+
+

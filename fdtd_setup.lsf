@@ -1,0 +1,61 @@
+# Reset Project
+newproject;
+
+# Run Setup Scripts
+load_parameters;
+geometry;
+
+# Set Materials
+selectpartial("si_elements::");
+set("material", "Si (Silicon) - Palik");
+
+select("germanium");
+set("material","Ge (Germanium) - Palik");
+
+selectpartial("anode_contacts::");
+set("material","Al (Aluminium) - CRC");
+
+select("cathode_contact");
+set("material","Al (Aluminium) - CRC");
+
+select("oxide");
+set("material","SiO2 (Glass) - Palik");
+set("override mesh order from material database",1);
+set("mesh order",5);
+
+# Add Optical Source (Mode Source)
+addmode;
+set("name","optical_in");
+set("use relative coordinates",0);
+set("injection axis","x-axis");
+set("x",x0_mode);
+set("y span",yspan_mode);
+set("z min",zmin_mode);
+set("z max",zmax_mode);
+zspan_mode = get("z span"); # Needed for generation monitor
+
+set("wavelength start",1.55e-6);
+set("wavelength stop",1.55e-6);
+
+# Add simulation region.
+
+addfdtd;
+set("y span",1.1*w);
+set("z min", 1.1*zmin_mode);
+set("z max", 1.1*(th_si+th_ge+th_contact));
+set("x min",-l/2-l_in);
+set("x max",l/2);
+set("y min bc","Anti-Symmetric");
+set("simulation time",10000e-15); # Maximum simulation time
+
+# Add CW Generation Monitor
+addobject("CW_generation");
+set("use relative coordinates",0);
+set("x",0);
+set("x span",l);
+set("y",0);
+set("y span",w_rib);
+set("z",(th_si+th_ge)/2);
+set("z span",th_si + th_ge);
+set("source intensity",1/yspan_mode/zspan_mode);
+set("average dimension","x");
